@@ -1,65 +1,48 @@
-const joi = require('joi');
-const {
-  listContacts,
-  getContactById,
-  removeContact,
-  addContact,
-  updateContact,
-} = require('../models/contacts');
+const { contacts } = require('../models/contacts');
 const { HttpError } = require('../helpers/HttpError');
 const ctrl = require('../helpers/cntrlWraper');
 
-const schemaPost = joi.object({
-  name: joi.string().required(),
-  email: joi.string().email().required(),
-  phone: joi.string().required(),
-});
-
-const schemaPut = joi.object({
-  name: joi.string().required(),
-  email: joi.string().email().required(),
-  phone: joi.string().required(),
-});
-
 const getAll = async (req, res, next) => {
-  res.json(await listContacts());
+  res.json(await contacts.find({}, '-createdAt -updatedAt -__v'));
 };
 
 const getById = async (req, res, next) => {
-  const result = await getContactById(req.params.contactId);
-  if (!result) {
-    next();
-  }
+  const result = await contacts.findById(req.params.contactId, '-createdAt -updatedAt -__v');
+  if (!result) throw HttpError('Id not found', 404);
   res.json(result);
 };
 
 const add = async (req, res, next) => {
   const body = req.body;
-  const { error } = schemaPost.validate(body);
-  if (error) {
-    throw HttpError('missing required name field', 400);
-  }
-  res.status(201).json(await addContact(body));
+  const result = await contacts.create(body);
+  res.status(201).json(result);
 };
 
 const deleteContact = async (req, res, next) => {
-  const result = await removeContact(req.params.contactId);
-  if (!result) {
-    next();
-  }
-  res.json(result);
+  const result = await contacts.findByIdAndRemove(req.params.contactId);
+  if (!result) throw HttpError('Id not found', 404);
+  res.json({
+    message: 'Contact deleted',
+  });
 };
 
 const update = async (req, res, next) => {
   const body = req.body;
-  const { error } = schemaPut.validate(body);
-  if (error) {
-    throw HttpError('missing fields', 400);
-  }
-  const result = await updateContact(req.params.contactId, body);
-  if (!result) {
-    return next();
-  }
+  const result = await contacts.findByIdAndUpdate(req.params.contactId, body, {
+    new: true,
+    select: '-createdAt -updatedAt -__v',
+  });
+  if (!result) throw HttpError('Id not found', 404);
+  res.json(result);
+};
+
+const updateStatusContact = async (req, res, next) => {
+  const body = req.body;
+  const result = await contacts.findByIdAndUpdate(req.params.contactId, body, {
+    new: true,
+    select: '-createdAt -updatedAt -__v',
+  });
+  if (!result) throw HttpError('Id not found', 404);
   res.json(result);
 };
 
@@ -69,4 +52,5 @@ module.exports = {
   add: ctrl(add),
   deleteContact: ctrl(deleteContact),
   update: ctrl(update),
+  updateStatusContact: ctrl(updateStatusContact),
 };
