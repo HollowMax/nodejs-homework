@@ -9,21 +9,23 @@ const {
   updateStatusContact,
 } = require('../../controllers/contacts');
 const { isValid } = require('../../middlewares/isValid');
+const { authenticate } = require('../../middlewares/authenticate');
 const { validateBody } = require('../../middlewares/validateBody');
 const { schemaFullData, schemaFavorite } = require('../../models/contacts');
 
-router.get('/', getAll);
+router.get('/', authenticate, getAll);
 
-router.get('/:contactId', isValid, getById);
+router.get('/:contactId', authenticate, isValid, getById);
 
-router.post('/', validateBody(schemaFullData), add);
+router.post('/', authenticate, validateBody(schemaFullData), add);
 
-router.delete('/:contactId', isValid, deleteContact);
+router.delete('/:contactId', authenticate, isValid, deleteContact);
 
-router.put('/:contactId', isValid, validateBody(schemaFullData), update);
+router.put('/:contactId', authenticate, isValid, validateBody(schemaFullData), update);
 
 router.patch(
   '/:contactId/favorite',
+  authenticate,
   isValid,
   validateBody(schemaFavorite, 'missing field favorite'),
   updateStatusContact
