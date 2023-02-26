@@ -1,5 +1,6 @@
 const { Schema, model } = require('mongoose');
 const joi = require('joi');
+const { mongooseHandleError } = require('../helpers/mongooseHandleError');
 
 const contactSchema = new Schema(
   {
@@ -17,9 +18,16 @@ const contactSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    owner: {
+      type: Schema.Types.ObjectId,
+      ref: 'user',
+      required: true,
+    },
   },
   { versionKey: false, timestamps: true }
 );
+
+contactSchema.post('save', mongooseHandleError);
 
 const schemaFullData = joi.object({
   name: joi.string().required(),

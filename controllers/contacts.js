@@ -3,7 +3,12 @@ const { HttpError } = require('../helpers/HttpError');
 const ctrl = require('../helpers/cntrlWraper');
 
 const getAll = async (req, res, next) => {
-  res.json(await contacts.find({}, '-createdAt -updatedAt -__v'));
+  const { page, limit, favorite } = req.query;
+  const skip = (page - 1) * limit;
+
+  const findBy = favorite ? { favorite } : {};
+
+  res.json(await contacts.find(findBy, '-createdAt -updatedAt -__v').skip(skip).limit(limit));
 };
 
 const getById = async (req, res, next) => {
