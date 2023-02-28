@@ -18,6 +18,7 @@ const userSchema = new Schema(
       enum: ['starter', 'pro', 'business'],
       default: 'starter',
     },
+    avatarURL: String,
     token: String,
   },
   { versionKey: false, timestamps: true }
@@ -31,6 +32,7 @@ const schemaRegistration = joi.object({
   email: joi.string().email().required(),
   password: joi.string().required(),
   subscription: joi.string().valid('starter', 'pro', 'business'),
+  avatarURL: joi.string(),
 });
 
 const schemaLogin = joi.object({
