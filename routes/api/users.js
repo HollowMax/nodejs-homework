@@ -1,5 +1,7 @@
 const router = require('express').Router();
 const {
+  sendVerification,
+  verifyUser,
   usersRegistration,
   userLogin,
   userLogout,
@@ -10,15 +12,28 @@ const {
 const { authenticate } = require('../../middlewares/authenticate');
 const { validateBody } = require('../../middlewares/validateBody');
 const upload = require('../../middlewares/upload');
-const { schemaRegistration, schemaLogin, schemUpdateSubscription } = require('../../models/users');
+const {
+  schemaRegistration,
+  schemaLogin,
+  schemUpdateSubscription,
+  schemEmailVerification,
+} = require('../../models/users');
+
+router.get('/current', authenticate, currentUser);
+
+router.get('/verify/:verificationToken', verifyUser);
+
+router.post(
+  '/verify',
+  validateBody(schemEmailVerification, 'Missing required field email'),
+  sendVerification
+);
 
 router.post('/register', validateBody(schemaRegistration), usersRegistration);
 
 router.post('/login', validateBody(schemaLogin), userLogin);
 
 router.post('/logout', authenticate, userLogout);
-
-router.get('/current', authenticate, currentUser);
 
 router.patch('/', authenticate, validateBody(schemUpdateSubscription), updateSubscription);
 
