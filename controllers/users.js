@@ -2,16 +2,61 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const gravatar = require('gravatar');
 const jimp = require('jimp');
+const { v4: uuidv4 } = require('uuid');
 const fs = require('fs/promises');
 const Path = require('path');
 const ctrl = require('../helpers/cntrlWraper');
 const { HttpError } = require('../helpers/HttpError');
 const { users } = require('../models/users');
+const sendEmail = require('../helpers/emailSender');
+
+const verifyUser = async (req, res, next) => {
+  const verificatedUser = await users.findOneAndUpdate(
+    {
+      verificationToken: req.params.verificationToken,
+    },
+    { verificationToken: null, verify: true }
+  );
+
+  if (!verificatedUser) {
+    throw HttpError('User not found', 404);
+  }
+
+  res.json({ message: 'Verification successful' });
+};
+
+const sendVerification = async (req, res, next) => {
+  const email = req.body.email;
+
+  const user = await users.findOne({ email });
+
+  const verificationToken = user.verificationToken;
+
+  if (!user) {
+    throw HttpError('User not found!', 404);
+  }
+  if (!user.verificationToken) {
+    throw HttpError('Verification has already been passed', 400);
+  }
+
+  sendEmail(email, verificationToken);
+
+  res.json({
+    message: 'Verification email sent',
+  });
+};
 
 const usersRegistration = async (req, res, next) => {
   const password = await bcrypt.hash(req.body.password, 8);
   const avatarURL = gravatar.url(req.body.email, { d: 'mp' });
-  const { email, subscription } = await users.create({ ...req.body, password, avatarURL });
+  const { email, subscription, verificationToken } = await users.create({
+    ...req.body,
+    password,
+    avatarURL,
+    verificationToken: uuidv4(),
+  });
+
+  sendEmail(email, verificationToken);
 
   res.status(201).json({
     user: {
@@ -23,6 +68,7 @@ const usersRegistration = async (req, res, next) => {
 
 const userLogin = async (req, res, next) => {
   const user = await users.findOne({ email: req.body.email });
+
   const { KEY } = process.env;
   let validPassword;
   if (user) {
@@ -30,6 +76,9 @@ const userLogin = async (req, res, next) => {
   }
   if (!user || !validPassword) {
     throw HttpError('Email or password is wrong', 401);
+  }
+  if (!user.verify) {
+    throw HttpError('Email not confirmed', 403);
   }
   const token = jwt.sign({ id: user._id }, KEY, { expiresIn: '23h' });
   await users.findByIdAndUpdate(user._id, { token });
@@ -73,6 +122,8 @@ const updateAvatar = async (req, res, next) => {
 };
 
 module.exports = {
+  verifyUser: ctrl(verifyUser),
+  sendVerification: ctrl(sendVerification),
   usersRegistration: ctrl(usersRegistration),
   userLogin: ctrl(userLogin),
   userLogout: ctrl(userLogout),
